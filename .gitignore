@@ -2,3 +2,4 @@
 /.gomodcache/
 /*.exe
 /*.wasm
+/data/

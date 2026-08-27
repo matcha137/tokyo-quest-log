@@ -80,6 +80,8 @@ func (g *WorldGame) loadWorld(path string) error {
 	}
 	placed, _ := landmark.Place(grid, marks)
 	g.world = worldsim.New(grid, placed, 1)
+	// 起点は東京駅。見つからない場合は worldsim の既定位置のままにする。
+	g.world.SpawnAt("tokyo")
 	return nil
 }
 

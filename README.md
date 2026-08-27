@@ -104,8 +104,18 @@ MVPでは、次のデータ種別がゲームルールとして機能するか�
 西端の雲取山（2,017m）まで揃うため、低地から高山までの地形帯が
 実データからそのまま得られます。
 
-生成は `tools/meshbuild` で行います。詳細は
-[tools/meshbuild/README.md](tools/meshbuild/README.md) を参照してください。
+同梱の `assets/world.bin`（64KB）は国土地理院の標高タイルから生成済みで、
+そのまま起動できます。作り直す場合は次の2段階です。
+
+```powershell
+go run ./tools/demtiles -z 11 -out data/elevation.csv
+go run ./tools/meshbuild -in data/elevation.csv -landmarks assets/landmarks.json -out assets/world.bin
+```
+
+`demtiles` は国土地理院の標高タイルを取得して5次メッシュごとの平均標高に集約します。
+取得したタイルは `data/demtiles` に保存され、次回以降は再取得しません。
+
+生成の詳細は [tools/meshbuild/README.md](tools/meshbuild/README.md) を参照してください。
 
 ```powershell
 go run ./tools/meshbuild -in <標高CSV> -boundary <都域GeoJSON> -overlay water=<河川GeoJSON> -landmarks assets/landmarks.json -out assets/world.bin -tmx tiled/tokyo.tmx
@@ -116,6 +126,21 @@ go run ./tools/meshbuild -in <標高CSV> -boundary <都域GeoJSON> -overlay wate
 
 `assets/landmarks.json` の座標は概算（誤差おおむね±500m）です。
 1マス約250mのため、2マス程度ずれる場合があります。
+
+### 現在の制約
+
+都域境界のデータをまだ入れていないため、**埼玉・神奈川・千葉の陸地も地形として
+残っています**。舞台を東京都に限定するには、行政区域のGeoJSONを
+`-boundary` に渡す必要があります。
+
+## 出典
+
+地形データは国土地理院の標高タイルを加工して作成しています。
+
+- 出典: 国土地理院 標高タイル（https://maps.gsi.go.jp/development/ichiran.html）
+- `assets/world.bin` は上記を250mメッシュへ集約し、標高帯で地形に分類した加工物です
+
+利用にあたっては国土地理院コンテンツ利用規約に従ってください。
 
 ## 構成
 
@@ -130,5 +155,6 @@ go run ./tools/meshbuild -in <標高CSV> -boundary <都域GeoJSON> -overlay wate
 | `internal/landmark` | ランドマークの読み込みと配置 |
 | `internal/worldsim` | 移動・通行判定・遭遇（描画非依存） |
 | `internal/tmx` | Tiled形式の書き出し |
+| `tools/demtiles` | 国土地理院 標高タイルの取得と集約 |
 | `tools/meshbuild` | ワールドマップ生成ツール |
 
