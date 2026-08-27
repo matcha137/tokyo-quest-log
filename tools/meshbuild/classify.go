@@ -44,6 +44,6 @@ func describeBands() string {
 		prev = fmt.Sprintf("%.0f", b.maxElevation)
 	}
 	fmt.Fprintf(&sb, "  %-4s %sm以上\n", worldgrid.HighMountain, prev)
-	fmt.Fprintf(&sb, "  %-4s 標高データなし（陸域外＝海・都域外）\n", worldgrid.Sea)
+	fmt.Fprintf(&sb, "  %-4s 標高データなし（陸域データが存在しないマス）\n", worldgrid.Sea)
 	return sb.String()
 }

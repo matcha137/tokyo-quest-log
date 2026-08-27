@@ -34,7 +34,11 @@ func run() error {
 		level      = flag.Int("level", 5, "出力するメッシュ次数（5=約250m, 4=約500m, 3=約1km）")
 		scale      = flag.Int("scale", 3, "プレビュー1タイルあたりのピクセル数")
 		boundsFlag = flag.String("bounds", "", "対象範囲 minLat,minLon,maxLat,maxLon（既定は東京都本土）")
+		boundary   = flag.String("boundary", "", "都域境界のGeoJSON。外側を都域外として塗る")
+		lineWidth  = flag.Int("line-width", 1, "線状の水域をなぞる幅（マス）")
+		overlays   overlayList
 	)
+	flag.Var(&overlays, "overlay", "重ね合わせる形状 地形名=GeoJSONのパス（繰り返し指定可、指定順に適用）")
 	flag.Parse()
 
 	if *in == "" {
@@ -74,6 +78,24 @@ func run() error {
 		}
 	}
 
+	// 境界を先に適用する。都域外を確定させてから水域を描くことで、
+	// 河川が都外へはみ出して描かれるのを防ぐ。
+	var notes []string
+	if *boundary != "" {
+		note, err := applyBoundary(grid, *boundary)
+		if err != nil {
+			return err
+		}
+		notes = append(notes, note)
+	}
+	for _, req := range overlays {
+		note, err := applyOverlay(grid, req, *lineWidth)
+		if err != nil {
+			return err
+		}
+		notes = append(notes, note)
+	}
+
 	if err := writeGrid(grid, *out); err != nil {
 		return err
 	}
@@ -86,7 +108,7 @@ func run() error {
 		}
 	}
 
-	report(grid, *out, *preview, minElev, maxElev)
+	report(grid, *out, *preview, minElev, maxElev, notes)
 	return nil
 }
 
@@ -106,7 +128,7 @@ func writeGrid(g *worldgrid.Grid, path string) error {
 	return w.Flush()
 }
 
-func report(g *worldgrid.Grid, out, preview string, minElev, maxElev float64) {
+func report(g *worldgrid.Grid, out, preview string, minElev, maxElev float64, notes []string) {
 	latMeters := g.LatSpan * 111_320
 	lonMeters := g.LonSpan * 111_320 * math.Cos((g.OriginLat+float64(g.Rows)*g.LatSpan/2)*math.Pi/180)
 
@@ -119,7 +141,15 @@ func report(g *worldgrid.Grid, out, preview string, minElev, maxElev float64) {
 		fmt.Printf("  標高範囲 : %.0fm 〜 %.0fm\n", minElev, maxElev)
 	}
 
-	fmt.Printf("\n地形の区分:\n%s", describeBands())
+	fmt.Printf("\n標高による地形の区分:\n%s", describeBands())
+
+	if len(notes) > 0 {
+		fmt.Println()
+		fmt.Println("重ね合わせ:")
+		for _, note := range notes {
+			fmt.Println(note)
+		}
+	}
 
 	counts := g.Histogram()
 	total := g.Cols * g.Rows
@@ -128,8 +158,8 @@ func report(g *worldgrid.Grid, out, preview string, minElev, maxElev float64) {
 		share := float64(counts[t]) / float64(total) * 100
 		fmt.Printf("  %-4s %7d マス (%5.1f%%) %s\n", t, counts[t], share, bar(share))
 	}
-	land := total - counts[worldgrid.Sea]
-	fmt.Printf("\n  陸地 %d マス = 約 %.0f km²\n", land, float64(land)*latMeters*lonMeters/1e6)
+	land := total - counts[worldgrid.Sea] - counts[worldgrid.Water] - counts[worldgrid.OutOfArea]
+	fmt.Printf("\n  陸地 %d マス = 約 %.0f km²（海・内水面・都域外を除く）\n", land, float64(land)*latMeters*lonMeters/1e6)
 
 	if info, err := os.Stat(out); err == nil {
 		fmt.Printf("\n  %s (%.1f KB)\n", out, float64(info.Size())/1024)

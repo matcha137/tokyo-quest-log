@@ -19,6 +19,8 @@ var palette = [worldgrid.TerrainCount]color.RGBA{
 	worldgrid.Hill:         {R: 154, G: 140, B: 84, A: 255},
 	worldgrid.Mountain:     {R: 124, G: 106, B: 74, A: 255},
 	worldgrid.HighMountain: {R: 198, G: 198, B: 190, A: 255},
+	worldgrid.Water:        {R: 74, G: 138, B: 176, A: 255},
+	worldgrid.OutOfArea:    {R: 38, G: 44, B: 50, A: 255},
 }
 
 // writePreviewPNG はグリッドを1タイル scale ピクセルで画像化する。

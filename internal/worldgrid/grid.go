@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"strings"
 
 	"tokyo-quest-log/internal/geomesh"
 )
@@ -27,10 +28,38 @@ const (
 	Mountain             // 山地
 	HighMountain         // 高山
 
+	// Water は河川・湖沼などの内水面。海とは分けて扱う。
+	// 海は船で越える対象、内水面は橋や渡しで越える対象、という区別を想定する。
+	Water
+	// OutOfArea は都域外。標高データは存在するが舞台の外側であるマス。
+	// 海として塗ると埼玉や神奈川が水没するため、専用の種別を設ける。
+	OutOfArea
+
 	TerrainCount
 )
 
-var terrainNames = [TerrainCount]string{"海", "低地", "平地", "台地", "丘陵", "山地", "高山"}
+var terrainNames = [TerrainCount]string{"海", "低地", "平地", "台地", "丘陵", "山地", "高山", "内水面", "都域外"}
+
+// terrainKeys はコマンドラインなどで地形を指定するための名前。
+var terrainKeys = map[string]Terrain{
+	"sea": Sea, "海": Sea,
+	"lowland": Lowland, "低地": Lowland,
+	"plain": Plain, "平地": Plain,
+	"plateau": Plateau, "台地": Plateau,
+	"hill": Hill, "丘陵": Hill,
+	"mountain": Mountain, "山地": Mountain,
+	"highmountain": HighMountain, "高山": HighMountain,
+	"water": Water, "内水面": Water,
+	"outofarea": OutOfArea, "都域外": OutOfArea,
+}
+
+// TerrainFromName は名前から地形種別を引く。
+func TerrainFromName(name string) (Terrain, error) {
+	if t, ok := terrainKeys[strings.ToLower(strings.TrimSpace(name))]; ok {
+		return t, nil
+	}
+	return 0, fmt.Errorf("未知の地形名: %q", name)
+}
 
 func (t Terrain) String() string {
 	if t >= TerrainCount {
@@ -40,9 +69,13 @@ func (t Terrain) String() string {
 }
 
 // Walkable は徒歩で進入できる地形かを返す。
-// 海と高山は special な移動手段を前提とし、初期状態では通行できない。
+// 海・内水面・高山は専用の移動手段を前提とし、都域外は舞台の外なので通れない。
 func (t Terrain) Walkable() bool {
-	return t != Sea && t != HighMountain
+	switch t {
+	case Sea, Water, HighMountain, OutOfArea:
+		return false
+	}
+	return true
 }
 
 // Bounds は緯度経度の矩形範囲。
