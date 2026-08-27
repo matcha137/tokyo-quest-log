@@ -16,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 
+	"tokyo-quest-log/internal/landmark"
+	"tokyo-quest-log/internal/tmx"
 	"tokyo-quest-log/internal/worldgrid"
 )
 
@@ -36,6 +38,9 @@ func run() error {
 		boundsFlag = flag.String("bounds", "", "対象範囲 minLat,minLon,maxLat,maxLon（既定は東京都本土）")
 		boundary   = flag.String("boundary", "", "都域境界のGeoJSON。外側を都域外として塗る")
 		lineWidth  = flag.Int("line-width", 1, "線状の水域をなぞる幅（マス）")
+		landmarks  = flag.String("landmarks", "", "ランドマークJSONのパス")
+		tmxOut     = flag.String("tmx", "", "Tiled形式(.tmx)の出力先。タイルセット画像も隣に書き出す")
+		tileSize   = flag.Int("tile-size", 32, "TMXの1マスのピクセル数")
 		overlays   overlayList
 	)
 	flag.Var(&overlays, "overlay", "重ね合わせる形状 地形名=GeoJSONのパス（繰り返し指定可、指定順に適用）")
@@ -96,19 +101,44 @@ func run() error {
 		notes = append(notes, note)
 	}
 
+	// ランドマークは地形の上に載る情報なので、重ね合わせの後に配置する。
+	var placed []landmark.Placed
+	if *landmarks != "" {
+		loaded, err := loadLandmarks(*landmarks)
+		if err != nil {
+			return err
+		}
+		var skipped []string
+		placed, skipped = landmark.Place(grid, loaded)
+		note := fmt.Sprintf("  ランドマーク %s: %d 件を配置", *landmarks, len(placed))
+		if len(skipped) > 0 {
+			note += fmt.Sprintf("（範囲外のため除外: %s）", strings.Join(skipped, ", "))
+		}
+		notes = append(notes, note)
+	}
+
 	if err := writeGrid(grid, *out); err != nil {
 		return err
+	}
+	if *tmxOut != "" {
+		if err := writeTMX(grid, placed, *tmxOut, *tileSize); err != nil {
+			return err
+		}
 	}
 	if *preview != "" {
 		if err := os.MkdirAll(filepath.Dir(*preview), 0o755); err != nil {
 			return err
 		}
-		if err := writePreviewPNG(grid, *preview, *scale); err != nil {
+		if err := writePreviewPNG(grid, placed, *preview, *scale); err != nil {
 			return err
 		}
 	}
 
 	report(grid, *out, *preview, minElev, maxElev, notes)
+	if *tmxOut != "" {
+		fmt.Println("  " + *tmxOut)
+		fmt.Println("  " + tilesetPathFor(*tmxOut))
+	}
 	return nil
 }
 
@@ -191,4 +221,42 @@ func parseBounds(s string) (worldgrid.Bounds, error) {
 		return worldgrid.Bounds{}, fmt.Errorf("-bounds の最小値が最大値以上: %+v", b)
 	}
 	return b, nil
+}
+
+func loadLandmarks(path string) ([]landmark.Landmark, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	loaded, err := landmark.Load(f)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	return loaded, nil
+}
+
+// tilesetPathFor は TMX と同じディレクトリに置くタイルセット画像のパスを返す。
+func tilesetPathFor(tmxPath string) string {
+	return filepath.Join(filepath.Dir(tmxPath), "terrain.png")
+}
+
+func writeTMX(g *worldgrid.Grid, placed []landmark.Placed, path string, tileSize int) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	// TMX はタイルセット画像を相対パスで参照するため、先に画像を書き出す。
+	if err := tmx.WriteTilesetPNG(tilesetPathFor(path), tileSize); err != nil {
+		return fmt.Errorf("タイルセット画像の書き出し: %w", err)
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	w := bufio.NewWriter(f)
+	if err := tmx.Export(w, g, placed, tmx.Options{TileSize: tileSize}); err != nil {
+		return err
+	}
+	return w.Flush()
 }

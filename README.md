@@ -19,10 +19,17 @@
 
 ## 起動方法
 
-Go 1.24以降が必要です。
+Go 1.24以降が必要です。既定では東京都のワールドマップが起動します。
 
 ```powershell
 go run .
+```
+
+ワールドマップのデータ（`assets/world.bin`）が無い場合は、生成手順を案内する画面が出ます。
+初期の探索デモを見る場合は次のとおりです。
+
+```powershell
+go run . -mode quest
 ```
 
 この環境ではGoがPATHに入っていないため、次でも起動できます。
@@ -34,6 +41,18 @@ go run .
 ビルド済みの `tokyo-quest-log.exe` を直接起動することもできます。
 
 ## 操作
+
+### ワールドマップ（`-mode world`）
+
+| キー | 操作 |
+|---|---|
+| `WASD` / 矢印 | 移動 |
+| `Shift` | 走る |
+| `Space` / `Enter` | 足元のランドマークを調べる |
+| `B` | 港で乗船・下船（海に出られる） |
+| `Esc` | 表示を閉じる |
+
+### 探索デモ（`-mode quest`）
 
 | キー | 操作 |
 |---|---|
@@ -76,10 +95,40 @@ MVPでは、次のデータ種別がゲームルールとして機能するか�
 4. イベントがクイズではなく、地図を読む判断になっているか観察する
 5. 効果が確認できてから、1地区の実データを接続する
 
+## ワールドマップ
+
+東京都本土を標準地域メッシュ（5次メッシュ＝約250m）でタイル化し、
+324 × 202 = 65,448 マスのワールドマップとして扱います。
+
+地形は標高から機械的に決まります。東京都は東端の海抜0m地帯から
+西端の雲取山（2,017m）まで揃うため、低地から高山までの地形帯が
+実データからそのまま得られます。
+
+生成は `tools/meshbuild` で行います。詳細は
+[tools/meshbuild/README.md](tools/meshbuild/README.md) を参照してください。
+
+```powershell
+go run ./tools/meshbuild -in <標高CSV> -boundary <都域GeoJSON> -overlay water=<河川GeoJSON> -landmarks assets/landmarks.json -out assets/world.bin -tmx tiled/tokyo.tmx
+```
+
+`-tmx` を付けると Tiled で開ける TMX を書き出します。標高から作った地形は
+下敷きであって完成品ではないため、Tiled で手直しして仕上げる想定です。
+
+`assets/landmarks.json` の座標は概算（誤差おおむね±500m）です。
+1マス約250mのため、2マス程度ずれる場合があります。
+
 ## 構成
 
-- `main.go`：アプリ起動
-- `game.go`：入力・描画・画面遷移
-- `model.go`：イベント、レイヤー、進行状態
-- `model_test.go`：進行ロジックのテスト
+| パス | 役割 |
+|---|---|
+| `main.go` | アプリ起動、画面の選択 |
+| `worldmap.go` | ワールドマップの入力・描画 |
+| `game.go` / `model.go` | 初期の探索デモ |
+| `internal/geomesh` | 標準地域メッシュと緯度経度の変換 |
+| `internal/worldgrid` | 地形グリッド、ラスタライズ、保存形式 |
+| `internal/geojson` | 水域・境界のGeoJSON読み込み |
+| `internal/landmark` | ランドマークの読み込みと配置 |
+| `internal/worldsim` | 移動・通行判定・遭遇（描画非依存） |
+| `internal/tmx` | Tiled形式の書き出し |
+| `tools/meshbuild` | ワールドマップ生成ツール |
 

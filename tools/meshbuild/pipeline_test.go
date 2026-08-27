@@ -141,7 +141,7 @@ func TestWriteGridAndPreview(t *testing.T) {
 	if err := writeGrid(g, binPath); err != nil {
 		t.Fatal(err)
 	}
-	if err := writePreviewPNG(g, pngPath, 2); err != nil {
+	if err := writePreviewPNG(g, nil, pngPath, 2); err != nil {
 		t.Fatal(err)
 	}
 

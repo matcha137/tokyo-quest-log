@@ -1,0 +1,38 @@
+{
+  "note": "座標は概算（誤差おおむね±500m）。1マス約250mのため2マス程度ずれる場合がある。実データと突き合わせて調整すること。",
+  "landmarks": [
+    {"id": "tokyo",        "name": "東京",        "kind": "city",     "lat": 35.681, "lon": 139.767, "note": "起点となる中央駅"},
+    {"id": "shinjuku",     "name": "新宿",        "kind": "city",     "lat": 35.690, "lon": 139.700},
+    {"id": "shibuya",      "name": "渋谷",        "kind": "city",     "lat": 35.658, "lon": 139.701},
+    {"id": "ikebukuro",    "name": "池袋",        "kind": "city",     "lat": 35.729, "lon": 139.711},
+    {"id": "ueno",         "name": "上野",        "kind": "city",     "lat": 35.714, "lon": 139.777},
+    {"id": "shinagawa",    "name": "品川",        "kind": "city",     "lat": 35.628, "lon": 139.739},
+    {"id": "kitasenju",    "name": "北千住",      "kind": "town",     "lat": 35.749, "lon": 139.805},
+    {"id": "nerima",       "name": "練馬",        "kind": "town",     "lat": 35.737, "lon": 139.654},
+    {"id": "kichijoji",    "name": "吉祥寺",      "kind": "town",     "lat": 35.703, "lon": 139.580},
+    {"id": "mitaka",       "name": "三鷹",        "kind": "town",     "lat": 35.703, "lon": 139.560},
+    {"id": "chofu",        "name": "調布",        "kind": "town",     "lat": 35.652, "lon": 139.545},
+    {"id": "fuchu",        "name": "府中",        "kind": "town",     "lat": 35.672, "lon": 139.478},
+    {"id": "kokubunji",    "name": "国分寺",      "kind": "town",     "lat": 35.700, "lon": 139.480},
+    {"id": "tachikawa",    "name": "立川",        "kind": "city",     "lat": 35.698, "lon": 139.414},
+    {"id": "hachioji",     "name": "八王子",      "kind": "city",     "lat": 35.656, "lon": 139.339},
+    {"id": "machida",      "name": "町田",        "kind": "city",     "lat": 35.542, "lon": 139.447},
+    {"id": "ome",          "name": "青梅",        "kind": "town",     "lat": 35.788, "lon": 139.258},
+    {"id": "okutama",      "name": "奥多摩",      "kind": "town",     "lat": 35.809, "lon": 139.096},
+
+    {"id": "kumotoriyama", "name": "雲取山",      "kind": "peak",     "lat": 35.855, "lon": 138.944, "note": "都内最高峰 2,017m"},
+    {"id": "mitakesan",    "name": "御岳山",      "kind": "peak",     "lat": 35.782, "lon": 139.150},
+    {"id": "takaosan",     "name": "高尾山",      "kind": "peak",     "lat": 35.625, "lon": 139.244, "note": "599m"},
+    {"id": "okutamako",    "name": "奥多摩湖",    "kind": "dungeon",  "lat": 35.788, "lon": 139.045, "note": "小河内ダムの人造湖"},
+
+    {"id": "sensoji",      "name": "浅草寺",      "kind": "shrine",   "lat": 35.715, "lon": 139.797},
+    {"id": "meijijingu",   "name": "明治神宮",    "kind": "shrine",   "lat": 35.676, "lon": 139.699},
+    {"id": "kokyo",        "name": "皇居",        "kind": "facility", "lat": 35.685, "lon": 139.753},
+    {"id": "tokyotower",   "name": "東京タワー",  "kind": "facility", "lat": 35.659, "lon": 139.745},
+    {"id": "skytree",      "name": "東京スカイツリー", "kind": "facility", "lat": 35.710, "lon": 139.811},
+
+    {"id": "odaiba",       "name": "お台場",      "kind": "port",     "lat": 35.630, "lon": 139.776},
+    {"id": "haneda",       "name": "羽田",        "kind": "port",     "lat": 35.549, "lon": 139.780, "note": "空路・海路の玄関口"},
+    {"id": "kasai",        "name": "葛西臨海",    "kind": "port",     "lat": 35.641, "lon": 139.862}
+  ]
+}
