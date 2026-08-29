@@ -68,7 +68,8 @@ func applyBoundary(g *worldgrid.Grid, path string) (string, error) {
 	if len(c.Polygons) == 0 {
 		return "", fmt.Errorf("%s: 境界には面が必要です", path)
 	}
-	painted := g.MaskOutside(c.Polygons, worldgrid.OutOfArea)
+	// 海は境界の外でも海のまま残す。行政区域の面は陸地しか覆わないため。
+	painted := g.MaskOutside(c.Polygons, worldgrid.OutOfArea, worldgrid.Sea)
 	return fmt.Sprintf("  境界 %s: 外側 %d マスを都域外にしました（面 %d 個）",
 		path, painted, len(c.Polygons)), nil
 }

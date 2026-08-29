@@ -69,10 +69,12 @@ func (t Terrain) String() string {
 }
 
 // Walkable は徒歩で進入できる地形かを返す。
-// 海・内水面・高山は専用の移動手段を前提とし、都域外は舞台の外なので通れない。
+// 通れないのは水域と舞台の外だけにする。高山を塞ぐと奥多摩の山域が
+// まるごと到達不能になり、雲取山のような目的地が置けなくなるため、
+// 険しさは通行可否ではなく遭遇率で表す。
 func (t Terrain) Walkable() bool {
 	switch t {
-	case Sea, Water, HighMountain, OutOfArea:
+	case Sea, Water, OutOfArea:
 		return false
 	}
 	return true

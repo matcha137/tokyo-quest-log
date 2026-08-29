@@ -118,3 +118,58 @@ func TestViewSizeCoversScreen(t *testing.T) {
 		t.Errorf("縦方向が地図領域を覆えていない: %v マス", rows)
 	}
 }
+
+// 同梱の assets/world.bin が都域に限定されていること。
+// 都域外のマスが存在し、ランドマークが全て到達可能な地形に載っている必要がある。
+func TestBundledWorldIsClippedToTokyo(t *testing.T) {
+	g, err := NewWorldGame("assets/world.bin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g.loadErr != nil {
+		t.Fatalf("同梱のワールドマップを読み込めない: %v", g.loadErr)
+	}
+
+	counts := g.world.Grid.Histogram()
+	total := g.world.Grid.Cols * g.world.Grid.Rows
+	outside := counts[worldgrid.OutOfArea]
+	if outside == 0 {
+		t.Fatal("都域外のマスが無い。境界が適用されていない")
+	}
+	// 外接矩形に対して都域はおよそ4割。極端にずれていれば境界の適用ミスを疑う。
+	if share := float64(outside) / float64(total); share < 0.4 || share > 0.75 {
+		t.Errorf("都域外の割合 = %.1f%%, 40〜75%%を期待", share*100)
+	}
+
+	for _, p := range g.world.Placed {
+		if terrain := g.world.Grid.At(p.Row, p.Col); !terrain.Walkable() {
+			t.Errorf("%s が通行できないマスに載っている: %s", p.Name, terrain)
+		}
+	}
+}
+
+// 都域外へは踏み出せないこと。実データの端で確かめる。
+func TestCannotWalkOutOfTokyo(t *testing.T) {
+	g, err := NewWorldGame("assets/world.bin")
+	if err != nil || g.loadErr != nil {
+		t.Fatalf("同梱のワールドマップを読み込めない: %v %v", err, g.loadErr)
+	}
+	w := g.world
+
+	// 都域外のマスを1つ探し、そこへ入れないことを確かめる。
+	found := false
+	for row := 0; row < w.Grid.Rows && !found; row++ {
+		for col := 0; col < w.Grid.Cols; col++ {
+			if w.Grid.At(row, col) == worldgrid.OutOfArea {
+				if w.CanEnter(row, col) {
+					t.Fatalf("都域外 (%d,%d) に入れてしまう", row, col)
+				}
+				found = true
+				break
+			}
+		}
+	}
+	if !found {
+		t.Fatal("都域外のマスが見つからない")
+	}
+}

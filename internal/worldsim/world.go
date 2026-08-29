@@ -35,7 +35,8 @@ type Vec struct {
 }
 
 // encounterRates は地形ごとの遭遇しやすさ。1マス進むごとに加算される。
-// 高山と都域外は進入できないため0。町の中は別途、無条件で安全にする。
+// 進入できない地形は0。険しい地形ほど高くし、高山は最も遭遇しやすい。
+// 町の中は別途、無条件で安全にする。
 var encounterRates = [worldgrid.TerrainCount]float64{
 	worldgrid.Sea:          0.5,
 	worldgrid.Lowland:      0.7,
@@ -43,7 +44,7 @@ var encounterRates = [worldgrid.TerrainCount]float64{
 	worldgrid.Plateau:      1.1,
 	worldgrid.Hill:         1.5,
 	worldgrid.Mountain:     2.0,
-	worldgrid.HighMountain: 0,
+	worldgrid.HighMountain: 2.6,
 	worldgrid.Water:        0,
 	worldgrid.OutOfArea:    0,
 }

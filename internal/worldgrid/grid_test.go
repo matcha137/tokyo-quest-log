@@ -119,8 +119,9 @@ func TestWalkable(t *testing.T) {
 		terrain Terrain
 		want    bool
 	}{
-		{Sea, false}, {HighMountain, false},
-		{Lowland, true}, {Plain, true}, {Plateau, true}, {Hill, true}, {Mountain, true},
+		{Sea, false}, {Water, false}, {OutOfArea, false},
+		{Lowland, true}, {Plain, true}, {Plateau, true}, {Hill, true},
+		{Mountain, true}, {HighMountain, true},
 	} {
 		if got := tc.terrain.Walkable(); got != tc.want {
 			t.Errorf("%s.Walkable() = %v, want %v", tc.terrain, got, tc.want)

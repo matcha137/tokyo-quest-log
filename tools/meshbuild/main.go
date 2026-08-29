@@ -115,6 +115,9 @@ func run() error {
 			note += fmt.Sprintf("（範囲外のため除外: %s）", strings.Join(skipped, ", "))
 		}
 		notes = append(notes, note)
+		if stranded := strandedLandmarks(grid, placed); len(stranded) > 0 {
+			notes = append(notes, "  警告: 通行できないマスに載っています: "+strings.Join(stranded, ", "))
+		}
 	}
 
 	if err := writeGrid(grid, *out); err != nil {
@@ -259,4 +262,17 @@ func writeTMX(g *worldgrid.Grid, placed []landmark.Placed, path string, tileSize
 		return err
 	}
 	return w.Flush()
+}
+
+// strandedLandmarks は通行できないマスに載ってしまったランドマークを返す。
+// 座標が概算のため、境界や海のマスへずれ込むことがある。到達できない町は
+// ゲームとして成立しないので、生成時に気づけるようにする。
+func strandedLandmarks(g *worldgrid.Grid, placed []landmark.Placed) []string {
+	var stranded []string
+	for _, p := range placed {
+		if !g.At(p.Row, p.Col).Walkable() {
+			stranded = append(stranded, fmt.Sprintf("%s(%s)", p.Name, g.At(p.Row, p.Col)))
+		}
+	}
+	return stranded
 }

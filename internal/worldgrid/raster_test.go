@@ -162,3 +162,28 @@ func TestTerrainFromName(t *testing.T) {
 		}
 	}
 }
+
+// preserve に挙げた地形は境界の外でも塗り替えられないこと。
+// 行政区域の面は陸地しか覆わないため、海を残す用途で使う。
+func TestMaskOutsidePreservesTerrain(t *testing.T) {
+	g := unitGrid()
+	for i := range g.Tiles {
+		g.Tiles[i] = Plain
+	}
+	for col := 0; col < g.Cols; col++ {
+		g.Set(0, col, Sea) // 北端をすべて海にする
+	}
+	painted := g.MaskOutside([]geojson.Polygon{{rect(2, 2, 6, 6)}}, OutOfArea, Sea)
+
+	for col := 0; col < g.Cols; col++ {
+		if g.At(0, col) != Sea {
+			t.Fatalf("(0,%d) の海が塗り替えられた: %s", col, g.At(0, col))
+		}
+	}
+	if want := 84 - g.Cols; painted != want {
+		t.Errorf("塗ったマス数 = %d, want %d（外側84から北端の海10を除く）", painted, want)
+	}
+	if g.At(1, 0) != OutOfArea {
+		t.Errorf("海でない外側が塗られていない: %s", g.At(1, 0))
+	}
+}

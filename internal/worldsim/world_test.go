@@ -28,8 +28,8 @@ func buildTestGrid() *worldgrid.Grid {
 		g.Tiles[i] = worldgrid.Plain
 	}
 	for row := 0; row < 10; row++ {
-		g.Set(row, 0, worldgrid.Sea)          // 西の海
-		g.Set(row, 9, worldgrid.HighMountain) // 東の高山
+		g.Set(row, 0, worldgrid.Sea)       // 西の海
+		g.Set(row, 9, worldgrid.OutOfArea) // 東は都域外
 	}
 	return g
 }
@@ -56,20 +56,20 @@ func TestSpawnAt(t *testing.T) {
 }
 
 // 徒歩では海にも高山にも入れないこと。
-func TestOnFootCannotEnterSeaOrHighMountain(t *testing.T) {
+func TestOnFootCannotEnterSeaOrOutOfArea(t *testing.T) {
 	w := testWorld(t)
 	if w.CanEnter(5, 0) {
 		t.Error("徒歩で海に入れてしまう")
 	}
 	if w.CanEnter(5, 9) {
-		t.Error("徒歩で高山に入れてしまう")
+		t.Error("徒歩で都域外に出られてしまう")
 	}
 	if !w.CanEnter(5, 4) {
 		t.Error("平地に入れない")
 	}
 }
 
-// 船は海に出られるが、高山には入れないこと。
+// 船は海に出られるが、都域外へは出られないこと。
 func TestShipEntersSeaOnly(t *testing.T) {
 	w := testWorld(t)
 	w.Vehicle = ByShip
@@ -77,7 +77,7 @@ func TestShipEntersSeaOnly(t *testing.T) {
 		t.Error("船で海に出られない")
 	}
 	if w.CanEnter(5, 9) {
-		t.Error("船で高山に入れてしまう")
+		t.Error("船で都域外に出られてしまう")
 	}
 	if !w.CanEnter(5, 4) {
 		t.Error("船から陸へ上がれない")

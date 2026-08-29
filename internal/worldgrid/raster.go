@@ -44,7 +44,18 @@ func (g *Grid) FillPolygons(polys []geojson.Polygon, terrain Terrain) int {
 
 // MaskOutside は面の外側にあるマスを terrain で塗る。
 // 舞台の範囲を都域に限定する用途を想定している。
-func (g *Grid) MaskOutside(polys []geojson.Polygon, terrain Terrain) int {
+//
+// preserve に挙げた地形は塗り替えない。行政区域の面は陸地しか含まないため、
+// そのまま塗ると東京湾まで都域外になってしまう。海は境界の外でも海として
+// 残しておくことで、見た目と船の航路の両方が保たれる。
+func (g *Grid) MaskOutside(polys []geojson.Polygon, terrain Terrain, preserve ...Terrain) int {
+	keep := make([]bool, TerrainCount)
+	for _, t := range preserve {
+		if t < TerrainCount {
+			keep[t] = true
+		}
+	}
+
 	inside := make([]bool, g.Cols*g.Rows)
 	for _, poly := range polys {
 		g.scanPolygon(poly, func(row, col int) {
@@ -53,10 +64,11 @@ func (g *Grid) MaskOutside(polys []geojson.Polygon, terrain Terrain) int {
 	}
 	painted := 0
 	for i, in := range inside {
-		if !in && g.Tiles[i] != terrain {
-			g.Tiles[i] = terrain
-			painted++
+		if in || g.Tiles[i] == terrain || keep[g.Tiles[i]] {
+			continue
 		}
+		g.Tiles[i] = terrain
+		painted++
 	}
 	return painted
 }

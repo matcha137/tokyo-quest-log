@@ -109,8 +109,12 @@ MVPでは、次のデータ種別がゲームルールとして機能するか�
 
 ```powershell
 go run ./tools/demtiles -z 11 -out data/elevation.csv
-go run ./tools/meshbuild -in data/elevation.csv -landmarks assets/landmarks.json -out assets/world.bin
+go run ./tools/meshbuild -in data/elevation.csv -boundary data/n03/N03-20240101_13.geojson -landmarks assets/landmarks.json -out assets/world.bin
 ```
+
+`-boundary` には国土数値情報の行政区域（東京都）のGeoJSONを渡します。
+[国土数値情報ダウンロードサイト](https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-v3_1.html)
+から東京都のデータを取得し、zip内の `.geojson` を使ってください。
 
 `demtiles` は国土地理院の標高タイルを取得して5次メッシュごとの平均標高に集約します。
 取得したタイルは `data/demtiles` に保存され、次回以降は再取得しません。
@@ -127,20 +131,30 @@ go run ./tools/meshbuild -in <標高CSV> -boundary <都域GeoJSON> -overlay wate
 `assets/landmarks.json` の座標は概算（誤差おおむね±500m）です。
 1マス約250mのため、2マス程度ずれる場合があります。
 
-### 現在の制約
+### 移動できる範囲
 
-都域境界のデータをまだ入れていないため、**埼玉・神奈川・千葉の陸地も地形として
-残っています**。舞台を東京都に限定するには、行政区域のGeoJSONを
-`-boundary` に渡す必要があります。
+行政区域で切り抜いてあるため、**歩けるのは東京都本土の内側だけ**です。
+都域外のマスには進入できません。陸地は 27,288 マス = 約1,788 km² で、
+実際の東京都本土の面積とほぼ一致します。
+
+東京湾は境界の外ですが、都域外ではなく海として残しています。行政区域の面は
+陸地しか覆わないため、そのまま塗ると湾が消えてしまうためです。海は徒歩では
+渡れず、港（お台場・羽田・葛西臨海）で `B` を押して乗船すると航行できます。
+
+高山（900m以上）は通行できます。塞ぐと奥多摩の山域がまるごと到達不能になり、
+雲取山のような目的地が置けなくなるためで、険しさは通行可否ではなく
+遭遇率の高さで表しています。
 
 ## 出典
 
 地形データは国土地理院の標高タイルを加工して作成しています。
 
-- 出典: 国土地理院 標高タイル（https://maps.gsi.go.jp/development/ichiran.html）
-- `assets/world.bin` は上記を250mメッシュへ集約し、標高帯で地形に分類した加工物です
+- 地形: 国土地理院 標高タイル（https://maps.gsi.go.jp/development/ichiran.html）
+- 都域境界: 国土数値情報 行政区域データ（国土交通省、2024年版）
 
-利用にあたっては国土地理院コンテンツ利用規約に従ってください。
+`assets/world.bin` は上記を250mメッシュへ集約し、標高帯で地形に分類したうえで
+行政区域で切り抜いた加工物です。利用にあたっては国土地理院コンテンツ利用規約
+および国土数値情報の利用約款に従ってください。
 
 ## 構成
 
