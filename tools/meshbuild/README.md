@@ -87,5 +87,8 @@ go run ./tools/meshbuild -in data/elevation.csv   -boundary data/tokyo_boundary.
 | `-boundary` | なし | 都域境界のGeoJSON。外側を都域外にする |
 | `-overlay` | なし | `地形名=GeoJSONのパス`。繰り返し指定可 |
 | `-line-width` | `1` | 線状の水域をなぞる幅（マス） |
+| `-landmarks` | なし | ランドマークJSON。繰り返し指定可（同じマスは先勝ち） |
+| `-tmx` | なし | Tiled形式(.tmx)の出力先 |
+| `-tile-size` | `32` | TMXの1マスのピクセル数 |
 
 島嶼部は本土から遥かに離れるため、`-bounds` で別途切り出して別マップとして扱う。

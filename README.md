@@ -109,7 +109,8 @@ MVPでは、次のデータ種別がゲームルールとして機能するか�
 
 ```powershell
 go run ./tools/demtiles -z 11 -out data/elevation.csv
-go run ./tools/meshbuild -in data/elevation.csv -boundary data/n03/N03-20240101_13.geojson -landmarks assets/landmarks.json -out assets/world.bin
+go run ./tools/p12tourism -in data/p12/P12-14_13.xml -out assets/tourism.json
+go run ./tools/meshbuild -in data/elevation.csv -boundary data/n03/N03-20240101_13.geojson -landmarks assets/landmarks.json -landmarks assets/tourism.json -out assets/world.bin
 ```
 
 `-boundary` には国土数値情報の行政区域（東京都）のGeoJSONを渡します。
@@ -128,8 +129,18 @@ go run ./tools/meshbuild -in <標高CSV> -boundary <都域GeoJSON> -overlay wate
 `-tmx` を付けると Tiled で開ける TMX を書き出します。標高から作った地形は
 下敷きであって完成品ではないため、Tiled で手直しして仕上げる想定です。
 
-`assets/landmarks.json` の座標は概算（誤差おおむね±500m）です。
-1マス約250mのため、2マス程度ずれる場合があります。
+ランドマークは2種類あります。
+
+| ファイル | 内容 | 座標 |
+|---|---|---|
+| `assets/landmarks.json` | 町・山・港など、手で選んだ拠点 30件 | 概算（誤差おおむね±500m） |
+| `assets/tourism.json` | 観光資源データから自動生成した観光スポット | 公式データの座標 |
+
+`assets/tourism.json` は `p12tourism` の生成物です。手で編集せず、再生成してください。
+両者で同じマスに重なった場合は、手で選んだ拠点が優先されます。
+
+観光資源データは2014年版のため、それ以降にできた施設は含まれません。
+補いたい場合は `assets/landmarks.json` に手で追加してください。
 
 ### 移動できる範囲
 
@@ -151,6 +162,7 @@ go run ./tools/meshbuild -in <標高CSV> -boundary <都域GeoJSON> -overlay wate
 
 - 地形: 国土地理院 標高タイル（https://maps.gsi.go.jp/development/ichiran.html）
 - 都域境界: 国土数値情報 行政区域データ（国土交通省、2024年版）
+- 観光スポット: 国土数値情報 観光資源データ（国土交通省、2014年版）
 
 `assets/world.bin` は上記を250mメッシュへ集約し、標高帯で地形に分類したうえで
 行政区域で切り抜いた加工物です。利用にあたっては国土地理院コンテンツ利用規約
@@ -170,5 +182,6 @@ go run ./tools/meshbuild -in <標高CSV> -boundary <都域GeoJSON> -overlay wate
 | `internal/worldsim` | 移動・通行判定・遭遇（描画非依存） |
 | `internal/tmx` | Tiled形式の書き出し |
 | `tools/demtiles` | 国土地理院 標高タイルの取得と集約 |
+| `tools/p12tourism` | 観光資源データ(GML)のランドマークJSONへの変換 |
 | `tools/meshbuild` | ワールドマップ生成ツール |
 

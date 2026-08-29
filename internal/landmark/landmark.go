@@ -24,12 +24,13 @@ const (
 	KindDungeon  Kind = "dungeon"  // 洞窟・迷宮
 	KindPort     Kind = "port"     // 港。海路の起点
 	KindShrine   Kind = "shrine"   // 社寺
+	KindSight    Kind = "sight"    // 観光地
 	KindFacility Kind = "facility" // その他の施設
 )
 
 var validKinds = map[Kind]bool{
-	KindCity: true, KindTown: true, KindPeak: true,
-	KindDungeon: true, KindPort: true, KindShrine: true, KindFacility: true,
+	KindCity: true, KindTown: true, KindPeak: true, KindDungeon: true,
+	KindPort: true, KindShrine: true, KindSight: true, KindFacility: true,
 }
 
 // Landmark は1つの目印。座標は実在地点のおおよその緯度経度。
@@ -80,14 +81,23 @@ type Placed struct {
 }
 
 // Place はランドマークをグリッドのマスへ対応づける。
-// グリッドの範囲外にあるものは skipped に名前を集めて返す。
+// 配置できなかったものは理由を添えて skipped に集めて返す。
+//
+// 1マスに載せられるのは1件だけとする。マス単位で引く索引が成り立たなくなり、
+// 先に置いた地点が調べられなくなるため、後から来た重複は落とす。
 func Place(g *worldgrid.Grid, landmarks []Landmark) (placed []Placed, skipped []string) {
+	taken := map[[2]int]bool{}
 	for _, l := range landmarks {
 		row, col, ok := cellOf(g, l)
 		if !ok {
-			skipped = append(skipped, l.Name)
+			skipped = append(skipped, l.Name+"（範囲外）")
 			continue
 		}
+		if taken[[2]int{row, col}] {
+			skipped = append(skipped, l.Name+"（マスの重複）")
+			continue
+		}
+		taken[[2]int{row, col}] = true
 		placed = append(placed, Placed{Landmark: l, Row: row, Col: col})
 	}
 	sort.Slice(placed, func(i, j int) bool {

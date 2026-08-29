@@ -22,6 +22,9 @@ import (
 //go:embed assets/landmarks.json
 var landmarkJSON []byte
 
+//go:embed assets/tourism.json
+var tourismJSON []byte
+
 const (
 	worldTileSize = 20
 	hudHeight     = 116
@@ -74,7 +77,7 @@ func (g *WorldGame) loadWorld(path string) error {
 	if err != nil {
 		return fmt.Errorf("%s: %w", path, err)
 	}
-	marks, err := landmark.Load(bytes.NewReader(landmarkJSON))
+	marks, err := bundledLandmarks()
 	if err != nil {
 		return err
 	}
@@ -83,6 +86,21 @@ func (g *WorldGame) loadWorld(path string) error {
 	// 起点は東京駅。見つからない場合は worldsim の既定位置のままにする。
 	g.world.SpawnAt("tokyo")
 	return nil
+}
+
+// bundledLandmarks は手で選んだ地点と、観光資源データから作った地点を繋ぐ。
+// 手で選んだ方を先に置く。同じマスに重なった場合は先勝ちで、
+// 拠点となる町が観光スポットに押し出されないようにする。
+func bundledLandmarks() ([]landmark.Landmark, error) {
+	base, err := landmark.Load(bytes.NewReader(landmarkJSON))
+	if err != nil {
+		return nil, err
+	}
+	sights, err := landmark.Load(bytes.NewReader(tourismJSON))
+	if err != nil {
+		return nil, err
+	}
+	return append(base, sights...), nil
 }
 
 func (g *WorldGame) Layout(_, _ int) (int, int) { return screenWidth, screenHeight }
@@ -242,6 +260,8 @@ func landmarkColor(kind landmark.Kind) color.RGBA {
 		return color.RGBA{R: 96, G: 214, B: 224, A: 255}
 	case landmark.KindShrine:
 		return color.RGBA{R: 236, G: 108, B: 168, A: 255}
+	case landmark.KindSight:
+		return color.RGBA{R: 118, G: 200, B: 126, A: 255}
 	}
 	return color.RGBA{R: 232, G: 224, B: 110, A: 255}
 }
@@ -330,6 +350,8 @@ func kindLabel(kind landmark.Kind) string {
 		return "港"
 	case landmark.KindShrine:
 		return "社寺"
+	case landmark.KindSight:
+		return "観光地"
 	}
 	return "施設"
 }

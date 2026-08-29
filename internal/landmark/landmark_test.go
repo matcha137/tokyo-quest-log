@@ -107,3 +107,57 @@ func TestMeshCode(t *testing.T) {
 		t.Errorf("東京のメッシュコード = %q, 53394611 で始まることを期待", code)
 	}
 }
+
+// 同じマスに複数のランドマークが来た場合、先に指定した方だけが残ること。
+// マス単位の索引が成り立たなくなるため、後から来たものは落とす。
+func TestPlaceDropsCellDuplicates(t *testing.T) {
+	g, err := worldgrid.New(worldgrid.TokyoMainland, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 同じ座標を持つ2件。1マス約250mなので確実に同じマスへ落ちる。
+	marks := []Landmark{
+		{ID: "base", Name: "拠点", Kind: KindCity, Lat: 35.6812, Lon: 139.7671},
+		{ID: "sight", Name: "観光地", Kind: KindSight, Lat: 35.6812, Lon: 139.7671},
+	}
+	placed, skipped := Place(g, marks)
+	if len(placed) != 1 {
+		t.Fatalf("配置数 = %d, want 1", len(placed))
+	}
+	if placed[0].ID != "base" {
+		t.Errorf("先に指定した方が残っていない: %s", placed[0].ID)
+	}
+	if len(skipped) != 1 {
+		t.Fatalf("除外の報告 = %v, 1件を期待", skipped)
+	}
+	if !strings.Contains(skipped[0], "観光地") {
+		t.Errorf("除外されたのは観光地のはず: %q", skipped[0])
+	}
+	if len(NewIndex(placed)) != len(placed) {
+		t.Error("索引にマスの重複が残っている")
+	}
+}
+
+// 同梱の観光スポットデータが読め、種別が妥当であること。
+func TestBundledTourismLoads(t *testing.T) {
+	f, err := os.Open("../../assets/tourism.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	spots, err := Load(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(spots) < 20 {
+		t.Errorf("観光スポット = %d 件, 20件以上を期待", len(spots))
+	}
+	for _, s := range spots {
+		if s.Kind != KindSight && s.Kind != KindShrine {
+			t.Errorf("%s: 観光資源に想定外の種別: %s", s.Name, s.Kind)
+		}
+		if s.Lat == 0 || s.Lon == 0 {
+			t.Errorf("%s: 座標が入っていない", s.Name)
+		}
+	}
+}

@@ -38,12 +38,13 @@ func run() error {
 		boundsFlag = flag.String("bounds", "", "対象範囲 minLat,minLon,maxLat,maxLon（既定は東京都本土）")
 		boundary   = flag.String("boundary", "", "都域境界のGeoJSON。外側を都域外として塗る")
 		lineWidth  = flag.Int("line-width", 1, "線状の水域をなぞる幅（マス）")
-		landmarks  = flag.String("landmarks", "", "ランドマークJSONのパス")
 		tmxOut     = flag.String("tmx", "", "Tiled形式(.tmx)の出力先。タイルセット画像も隣に書き出す")
 		tileSize   = flag.Int("tile-size", 32, "TMXの1マスのピクセル数")
 		overlays   overlayList
 	)
+	var landmarks stringList
 	flag.Var(&overlays, "overlay", "重ね合わせる形状 地形名=GeoJSONのパス（繰り返し指定可、指定順に適用）")
+	flag.Var(&landmarks, "landmarks", "ランドマークJSONのパス（繰り返し指定可、先に指定したものを優先）")
 	flag.Parse()
 
 	if *in == "" {
@@ -103,18 +104,22 @@ func run() error {
 
 	// ランドマークは地形の上に載る情報なので、重ね合わせの後に配置する。
 	var placed []landmark.Placed
-	if *landmarks != "" {
-		loaded, err := loadLandmarks(*landmarks)
-		if err != nil {
-			return err
+	if len(landmarks) > 0 {
+		var loaded []landmark.Landmark
+		for _, path := range landmarks {
+			batch, err := loadLandmarks(path)
+			if err != nil {
+				return err
+			}
+			loaded = append(loaded, batch...)
 		}
 		var skipped []string
 		placed, skipped = landmark.Place(grid, loaded)
-		note := fmt.Sprintf("  ランドマーク %s: %d 件を配置", *landmarks, len(placed))
+		notes = append(notes, fmt.Sprintf("  ランドマーク %s: %d 件を配置",
+			strings.Join(landmarks, ", "), len(placed)))
 		if len(skipped) > 0 {
-			note += fmt.Sprintf("（範囲外のため除外: %s）", strings.Join(skipped, ", "))
+			notes = append(notes, "  配置しなかったもの: "+strings.Join(skipped, ", "))
 		}
-		notes = append(notes, note)
 		if stranded := strandedLandmarks(grid, placed); len(stranded) > 0 {
 			notes = append(notes, "  警告: 通行できないマスに載っています: "+strings.Join(stranded, ", "))
 		}

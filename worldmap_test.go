@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"tokyo-quest-log/internal/landmark"
 	"tokyo-quest-log/internal/worldgrid"
 )
 
@@ -171,5 +172,38 @@ func TestCannotWalkOutOfTokyo(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("都域外のマスが見つからない")
+	}
+}
+
+// 拠点と観光スポットの両方が地図に載ること。
+func TestBundledLandmarksIncludeTourism(t *testing.T) {
+	g, err := NewWorldGame("assets/world.bin")
+	if err != nil || g.loadErr != nil {
+		t.Fatalf("同梱のワールドマップを読み込めない: %v %v", err, g.loadErr)
+	}
+
+	kinds := map[landmark.Kind]int{}
+	for _, p := range g.world.Placed {
+		kinds[p.Kind]++
+	}
+	if kinds[landmark.KindCity] == 0 {
+		t.Error("拠点となる町が載っていない")
+	}
+	if kinds[landmark.KindSight] == 0 {
+		t.Error("観光スポットが載っていない")
+	}
+	if len(g.world.Placed) < 45 {
+		t.Errorf("ランドマーク総数 = %d, 45件以上を期待", len(g.world.Placed))
+	}
+
+	// 拠点の東京は観光スポットに押し出されず残っていること。
+	found := false
+	for _, p := range g.world.Placed {
+		if p.ID == "tokyo" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("拠点の東京が失われている")
 	}
 }

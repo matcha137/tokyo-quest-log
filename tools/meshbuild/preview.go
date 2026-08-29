@@ -19,6 +19,7 @@ var markColors = map[landmark.Kind]color.RGBA{
 	landmark.KindDungeon:  {R: 168, G: 106, B: 214, A: 255},
 	landmark.KindPort:     {R: 96, G: 214, B: 224, A: 255},
 	landmark.KindShrine:   {R: 236, G: 108, B: 168, A: 255},
+	landmark.KindSight:    {R: 118, G: 200, B: 126, A: 255},
 	landmark.KindFacility: {R: 232, G: 224, B: 110, A: 255},
 }
 

@@ -94,3 +94,16 @@ func applyOverlay(g *worldgrid.Grid, req overlayRequest, lineWidth int) (string,
 	}
 	return fmt.Sprintf("  %s %s: %s", req.terrain, req.path, strings.Join(parts, ", ")), nil
 }
+
+// stringList は同じフラグを繰り返し指定できるようにする。
+type stringList []string
+
+func (l *stringList) String() string { return strings.Join(*l, ", ") }
+
+func (l *stringList) Set(value string) error {
+	if strings.TrimSpace(value) == "" {
+		return fmt.Errorf("パスが空です")
+	}
+	*l = append(*l, value)
+	return nil
+}
