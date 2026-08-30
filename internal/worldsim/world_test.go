@@ -226,3 +226,52 @@ func TestNearestLandmark(t *testing.T) {
 		t.Errorf("範囲外のランドマークが返った: %+v", got)
 	}
 }
+
+// 通行できないマスにランドマークがあっても、近くの通れるマスへずれること。
+// 街のマップでは駅や施設が建物・線路の上に載るため、これが無いと動けなくなる。
+func TestSpawnSnapsToWalkable(t *testing.T) {
+	g := buildTestGrid()
+	// 拠点の位置を建物で塞ぐ。
+	for row := 4; row <= 6; row++ {
+		for col := 4; col <= 6; col++ {
+			g.Set(row, col, worldgrid.Building)
+		}
+	}
+	placed := []landmark.Placed{
+		{Landmark: landmark.Landmark{ID: "station", Name: "駅", Kind: landmark.KindCity}, Row: 5, Col: 5},
+	}
+	w := New(g, placed, 1)
+
+	row, col := w.Cell()
+	if !w.Grid.At(row, col).Walkable() {
+		t.Fatalf("通行できないマス (%d,%d) %s から開始している", row, col, w.Grid.At(row, col))
+	}
+	// 実際に動けること。
+	if !w.Step(1, 0, 0.5).Moved && !w.Step(-1, 0, 0.5).Moved && !w.Step(0, 1, 0.5).Moved {
+		t.Error("どの方向にも動けない")
+	}
+}
+
+// 建物と線路は通れないこと。街のマップの壁になる。
+func TestTownTerrainBlocksMovement(t *testing.T) {
+	g := buildTestGrid()
+	for row := 0; row < g.Rows; row++ {
+		for col := 0; col < g.Cols; col++ {
+			g.Set(row, col, worldgrid.Road)
+		}
+	}
+	g.Set(5, 6, worldgrid.Building)
+	g.Set(5, 7, worldgrid.Rail)
+	g.Set(6, 5, worldgrid.Park)
+
+	w := New(g, nil, 1)
+	if w.CanEnter(5, 6) {
+		t.Error("建物に入れてしまう")
+	}
+	if w.CanEnter(5, 7) {
+		t.Error("線路に入れてしまう")
+	}
+	if !w.CanEnter(6, 5) {
+		t.Error("公園に入れない")
+	}
+}

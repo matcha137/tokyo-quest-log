@@ -95,3 +95,81 @@ func TestDecodeRejectsInvalid(t *testing.T) {
 		}
 	}
 }
+
+// 6次以降の拡張でも往復変換が保たれること。
+func TestFineLevelsRoundTrip(t *testing.T) {
+	p := LatLon{Lat: 35.6812, Lon: 139.7671} // 東京駅
+	for level := StandardMaxLevel + 1; level <= MaxLevel; level++ {
+		code, err := Encode(p, level)
+		if err != nil {
+			t.Fatalf("Encode(level %d): %v", level, err)
+		}
+		if len(code) != Digits(level) {
+			t.Errorf("%d次の桁数 = %d, want %d", level, len(code), Digits(level))
+		}
+		cell, err := Decode(code)
+		if err != nil {
+			t.Fatalf("Decode(%q): %v", code, err)
+		}
+		if cell.Level != level {
+			t.Errorf("Decode(%q).Level = %d, want %d", code, cell.Level, level)
+		}
+		if p.Lat < cell.SW.Lat || p.Lat >= cell.SW.Lat+cell.LatSpan {
+			t.Errorf("%q: 緯度が区画の外", code)
+		}
+		if p.Lon < cell.SW.Lon || p.Lon >= cell.SW.Lon+cell.LonSpan {
+			t.Errorf("%q: 経度が区画の外", code)
+		}
+		if again, _ := Encode(cell.Center(), level); again != code {
+			t.Errorf("中心の再変換 = %q, want %q", again, code)
+		}
+	}
+}
+
+// 次数が1つ上がるごとに区画がちょうど半分になること。
+func TestFineLevelsHalveEachStep(t *testing.T) {
+	for level := 4; level < MaxLevel; level++ {
+		lat, lon, err := Span(level)
+		if err != nil {
+			t.Fatal(err)
+		}
+		nextLat, nextLon, err := Span(level + 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if math.Abs(nextLat*2-lat) > 1e-12 || math.Abs(nextLon*2-lon) > 1e-12 {
+			t.Errorf("%d次から%d次で半分になっていない", level, level+1)
+		}
+	}
+}
+
+// 街のマップに使う細かい次数の実寸。縮尺設計の前提として固定しておく。
+func TestFineLevelSpanMeters(t *testing.T) {
+	const degreeMeters = 111_320.0
+	for _, tc := range []struct {
+		level            int
+		wantLat, wantLon float64
+	}{
+		{8, 29, 35},
+		{9, 14, 18},
+		{10, 7, 9},
+	} {
+		latSpan, lonSpan, err := Span(tc.level)
+		if err != nil {
+			t.Fatal(err)
+		}
+		latMeters := latSpan * degreeMeters
+		lonMeters := lonSpan * degreeMeters * math.Cos(35.68*math.Pi/180)
+		if math.Abs(latMeters-tc.wantLat) > 2 || math.Abs(lonMeters-tc.wantLon) > 2 {
+			t.Errorf("%d次 = %.1fm × %.1fm, 約%.0fm × %.0fm を期待",
+				tc.level, latMeters, lonMeters, tc.wantLat, tc.wantLon)
+		}
+		t.Logf("%2d次メッシュ: 南北 %5.1fm × 東西 %5.1fm", tc.level, latMeters, lonMeters)
+	}
+}
+
+func TestSpanRejectsTooFine(t *testing.T) {
+	if _, _, err := Span(MaxLevel + 1); err == nil {
+		t.Error("上限を超える次数がエラーにならなかった")
+	}
+}

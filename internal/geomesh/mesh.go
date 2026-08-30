@@ -3,6 +3,11 @@
 //
 // 5次メッシュ（約250m四方）がそのままワールドマップのタイル1マスに対応するため、
 // メッシュコードの格子構造をタイルグリッドの座標系として利用する。
+//
+// 6次以降は規格の範囲外で、本パッケージ独自の拡張である。4次・5次と同じく
+// 直前の区画を2×2に分割し、南西=1 南東=2 北西=3 北東=4 の1桁を足していく。
+// 街の中を歩くマップには250mでは粗すぎるため、同じ座標系のまま
+// 細かい格子を得られるようにしている。
 package geomesh
 
 import (
@@ -11,8 +16,12 @@ import (
 	"strconv"
 )
 
-// MaxLevel は対応する最大メッシュ次数。5次 = 1/4地域メッシュ = 約250m。
-const MaxLevel = 5
+const (
+	// StandardMaxLevel は規格が定める最大次数。5次 = 1/4地域メッシュ = 約250m。
+	StandardMaxLevel = 5
+	// MaxLevel は本パッケージが扱う最大次数。10次で東京付近およそ7m × 9m。
+	MaxLevel = 10
+)
 
 // LatLon は十進度で表した緯度経度。
 type LatLon struct {
@@ -25,34 +34,33 @@ type LatLon struct {
 // 緯度幅と経度幅は等しくない。5次メッシュは緯度7.5秒・経度11.25秒で、
 // 東京付近では約232m × 約282m となり、正方形ではない点に注意。
 func Span(level int) (latSpan, lonSpan float64, err error) {
-	switch level {
-	case 1:
+	switch {
+	case level == 1:
 		return 2.0 / 3.0, 1.0, nil // 40分 × 1度
-	case 2:
+	case level == 2:
 		return 1.0 / 12.0, 1.0 / 8.0, nil // 5分 × 7分30秒
-	case 3:
+	case level == 3:
 		return 1.0 / 120.0, 1.0 / 80.0, nil // 30秒 × 45秒
-	case 4:
-		return 1.0 / 240.0, 1.0 / 160.0, nil // 15秒 × 22.5秒
-	case 5:
-		return 1.0 / 480.0, 1.0 / 320.0, nil // 7.5秒 × 11.25秒
+	case level >= 4 && level <= MaxLevel:
+		// 4次以降は3次を2分割していく。4次=15秒、5次=7.5秒、以降は半分ずつ。
+		half := math.Exp2(float64(level - 3))
+		return 1.0 / 120.0 / half, 1.0 / 80.0 / half, nil
 	}
 	return 0, 0, fmt.Errorf("メッシュ次数は1〜%dの範囲: %d", MaxLevel, level)
 }
 
 // Digits は指定次数のメッシュコードの桁数を返す。未対応の次数では0。
 func Digits(level int) int {
-	switch level {
-	case 1:
+	switch {
+	case level == 1:
 		return 4
-	case 2:
+	case level == 2:
 		return 6
-	case 3:
+	case level == 3:
 		return 8
-	case 4:
-		return 9
-	case 5:
-		return 10
+	case level >= 4 && level <= MaxLevel:
+		// 4次以降は分割番号を1桁ずつ足していく。
+		return 8 + (level - 3)
 	}
 	return 0
 }
@@ -104,18 +112,14 @@ func Encode(p LatLon, level int) (string, error) {
 		return code, nil
 	}
 
-	// 4次・5次メッシュ: 直前の区画を2×2に分割し、
-	// 南西=1 南東=2 北西=3 北東=4 の1桁で表す。
-	fLat, fLon = (fLat-lat3)*2, (fLon-lon3)*2
-	lat4, lon4 := math.Floor(fLat), math.Floor(fLon)
-	code += strconv.Itoa(int(lat4)*2 + int(lon4) + 1)
-	if level == 4 {
-		return code, nil
+	// 4次以降: 直前の区画を2×2に分割し、
+	// 南西=1 南東=2 北西=3 北東=4 の1桁を次数の数だけ足していく。
+	prevLat, prevLon := lat3, lon3
+	for l := 4; l <= level; l++ {
+		fLat, fLon = (fLat-prevLat)*2, (fLon-prevLon)*2
+		prevLat, prevLon = math.Floor(fLat), math.Floor(fLon)
+		code += strconv.Itoa(int(prevLat)*2 + int(prevLon) + 1)
 	}
-
-	fLat, fLon = (fLat-lat4)*2, (fLon-lon4)*2
-	lat5, lon5 := math.Floor(fLat), math.Floor(fLon)
-	code += strconv.Itoa(int(lat5)*2 + int(lon5) + 1)
 	return code, nil
 }
 

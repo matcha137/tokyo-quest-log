@@ -95,9 +95,45 @@ func (w *World) SpawnAt(id string) bool {
 	return false
 }
 
+// placeAt はプレイヤーを指定マスへ置く。通行できないマスなら、
+// 最も近い通行できるマスへずらす。街のマップでは駅や施設のランドマークが
+// 建物や線路の上に載るため、そのまま置くと動けなくなる。
 func (w *World) placeAt(row, col int) {
+	if r, c, ok := w.nearestWalkable(row, col); ok {
+		row, col = r, c
+	}
 	w.Player = Vec{X: float64(col) + 0.5, Y: float64(row) + 0.5}
 	w.lastCell = [2]int{row, col}
+}
+
+// nearestWalkable は指定マスから外へ広がるように探し、
+// 最初に見つかった通行できるマスを返す。
+func (w *World) nearestWalkable(row, col int) (int, int, bool) {
+	if w.CanEnter(row, col) {
+		return row, col, true
+	}
+	limit := max(w.Grid.Rows, w.Grid.Cols)
+	for radius := 1; radius <= limit; radius++ {
+		for dy := -radius; dy <= radius; dy++ {
+			for dx := -radius; dx <= radius; dx++ {
+				// 外周だけを見る。内側は前の半径で確認済み。
+				if abs(dy) != radius && abs(dx) != radius {
+					continue
+				}
+				if w.CanEnter(row+dy, col+dx) {
+					return row + dy, col + dx, true
+				}
+			}
+		}
+	}
+	return row, col, false
+}
+
+func abs(v int) int {
+	if v < 0 {
+		return -v
+	}
+	return v
 }
 
 func (w *World) spawnAnywhere() {

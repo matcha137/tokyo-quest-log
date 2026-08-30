@@ -207,3 +207,42 @@ func TestBundledLandmarksIncludeTourism(t *testing.T) {
 		t.Error("拠点の東京が失われている")
 	}
 }
+
+// 同梱の街マップが読め、街として成立していること。
+func TestBundledTownMap(t *testing.T) {
+	g, err := NewWorldGame("assets/town_tokyo.bin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g.loadErr != nil {
+		t.Fatalf("街マップを読み込めない: %v", g.loadErr)
+	}
+	if g.world.Grid.Level != 10 {
+		t.Errorf("メッシュ次数 = %d, want 10", g.world.Grid.Level)
+	}
+
+	counts := g.world.Grid.Histogram()
+	for _, terrain := range []worldgrid.Terrain{worldgrid.Road, worldgrid.Building, worldgrid.Rail, worldgrid.Park} {
+		if counts[terrain] == 0 {
+			t.Errorf("%s が1マスも無い", terrain)
+		}
+	}
+
+	// 街として歩ける余地があること。建物で埋まっていたら遊べない。
+	total := g.world.Grid.Cols * g.world.Grid.Rows
+	var walkable int
+	for terrain := worldgrid.Terrain(0); terrain < worldgrid.TerrainCount; terrain++ {
+		if terrain.Walkable() {
+			walkable += counts[terrain]
+		}
+	}
+	if share := float64(walkable) / float64(total); share < 0.4 || share > 0.9 {
+		t.Errorf("歩ける割合 = %.1f%%, 40〜90%%を期待", share*100)
+	}
+
+	// 開始位置が壁の中でないこと。
+	row, col := g.world.Cell()
+	if !g.world.Grid.At(row, col).Walkable() {
+		t.Errorf("開始位置 (%d,%d) が %s で動けない", row, col, g.world.Grid.At(row, col))
+	}
+}

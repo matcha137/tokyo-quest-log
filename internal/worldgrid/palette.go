@@ -14,6 +14,13 @@ var Palette = [TerrainCount]color.RGBA{
 	HighMountain: {R: 198, G: 198, B: 190, A: 255},
 	Water:        {R: 74, G: 138, B: 176, A: 255},
 	OutOfArea:    {R: 38, G: 44, B: 50, A: 255},
+
+	// 街の詳細マップ用。屋根の茶、舗装の明るい灰、緑地の緑で街並みを表す。
+	Ground:   {R: 142, G: 150, B: 120, A: 255},
+	Road:     {R: 206, G: 198, B: 180, A: 255},
+	Rail:     {R: 92, G: 94, B: 104, A: 255},
+	Building: {R: 154, G: 100, B: 82, A: 255},
+	Park:     {R: 92, G: 148, B: 88, A: 255},
 }
 
 // Color は地形の表示色を返す。未知の値は都域外の色にする。

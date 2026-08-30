@@ -156,6 +156,27 @@ go run ./tools/meshbuild -in <標高CSV> -boundary <都域GeoJSON> -overlay wate
 雲取山のような目的地が置けなくなるためで、険しさは通行可否ではなく
 遭遇率の高さで表しています。
 
+## 街の詳細マップ
+
+ワールドマップとは別に、街を歩く詳細マップがある。東京駅周辺 3.2km × 2.8km を
+10次メッシュ（およそ7m × 9m）で 359 × 385 マスに落としたもの。
+
+```powershell
+go run . -world assets/town_tokyo.bin
+```
+
+**街の骨格は標高では出ない。** 東京駅周辺2km四方の高低差は14.9mしかなく、
+標高帯で分けるとほぼ全面が同じ色になる。そのため詳細マップでは
+道路・建物・線路・水面・緑地を地形として扱う。
+
+| 地形 | 通行 |
+|---|---|
+| 道路・地面・公園 | 歩ける |
+| 建物・線路・水面 | 通れない |
+
+生成は `tools/osmtown` で行う。詳細は
+[tools/osmtown/README.md](tools/osmtown/README.md) を参照。
+
 ## 出典
 
 地形データは国土地理院の標高タイルを加工して作成しています。
@@ -163,10 +184,14 @@ go run ./tools/meshbuild -in <標高CSV> -boundary <都域GeoJSON> -overlay wate
 - 地形: 国土地理院 標高タイル（https://maps.gsi.go.jp/development/ichiran.html）
 - 都域境界: 国土数値情報 行政区域データ（国土交通省、2024年版）
 - 観光スポット: 国土数値情報 観光資源データ（国土交通省、2014年版）
+- 街の詳細マップ: OpenStreetMap contributors（**ODbL**）
 
 `assets/world.bin` は上記を250mメッシュへ集約し、標高帯で地形に分類したうえで
 行政区域で切り抜いた加工物です。利用にあたっては国土地理院コンテンツ利用規約
 および国土数値情報の利用約款に従ってください。
+
+`assets/town_tokyo.bin` は OpenStreetMap の派生データベースにあたります。
+**配布する場合は ODbL の継承条件が及びます。**
 
 ## 構成
 
@@ -183,5 +208,6 @@ go run ./tools/meshbuild -in <標高CSV> -boundary <都域GeoJSON> -overlay wate
 | `internal/tmx` | Tiled形式の書き出し |
 | `tools/demtiles` | 国土地理院 標高タイルの取得と集約 |
 | `tools/p12tourism` | 観光資源データ(GML)のランドマークJSONへの変換 |
+| `tools/osmtown` | OSMデータから街の詳細マップを生成 |
 | `tools/meshbuild` | ワールドマップ生成ツール |
 

@@ -35,10 +35,22 @@ const (
 	// 海として塗ると埼玉や神奈川が水没するため、専用の種別を設ける。
 	OutOfArea
 
+	// ここから下は街の中を歩く詳細マップ用。
+	// 東京駅周辺の高低差は2km四方で15m程度しかなく、標高では街の構造が出ない。
+	// 道路・建物・線路といった人工物の方が街の骨格なので、それを地形として扱う。
+	Ground   // 街区の地面
+	Road     // 道路
+	Rail     // 線路
+	Building // 建物
+	Park     // 公園・緑地
+
 	TerrainCount
 )
 
-var terrainNames = [TerrainCount]string{"海", "低地", "平地", "台地", "丘陵", "山地", "高山", "内水面", "都域外"}
+var terrainNames = [TerrainCount]string{
+	"海", "低地", "平地", "台地", "丘陵", "山地", "高山", "内水面", "都域外",
+	"地面", "道路", "線路", "建物", "公園",
+}
 
 // terrainKeys はコマンドラインなどで地形を指定するための名前。
 var terrainKeys = map[string]Terrain{
@@ -51,6 +63,11 @@ var terrainKeys = map[string]Terrain{
 	"highmountain": HighMountain, "高山": HighMountain,
 	"water": Water, "内水面": Water,
 	"outofarea": OutOfArea, "都域外": OutOfArea,
+	"ground": Ground, "地面": Ground,
+	"road": Road, "道路": Road,
+	"rail": Rail, "線路": Rail,
+	"building": Building, "建物": Building,
+	"park": Park, "公園": Park,
 }
 
 // TerrainFromName は名前から地形種別を引く。
@@ -69,12 +86,12 @@ func (t Terrain) String() string {
 }
 
 // Walkable は徒歩で進入できる地形かを返す。
-// 通れないのは水域と舞台の外だけにする。高山を塞ぐと奥多摩の山域が
-// まるごと到達不能になり、雲取山のような目的地が置けなくなるため、
-// 険しさは通行可否ではなく遭遇率で表す。
+// 通れないのは水域と舞台の外、それに街の建物と線路だけにする。
+// 高山を塞ぐと奥多摩の山域がまるごと到達不能になり、雲取山のような
+// 目的地が置けなくなるため、険しさは通行可否ではなく遭遇率で表す。
 func (t Terrain) Walkable() bool {
 	switch t {
-	case Sea, Water, OutOfArea:
+	case Sea, Water, OutOfArea, Rail, Building:
 		return false
 	}
 	return true
