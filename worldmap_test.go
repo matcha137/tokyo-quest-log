@@ -246,3 +246,102 @@ func TestBundledTownMap(t *testing.T) {
 		t.Errorf("開始位置 (%d,%d) が %s で動けない", row, col, g.world.Grid.At(row, col))
 	}
 }
+
+// 東京のランドマークから街の詳細マップへ入り、元の場所へ戻れること。
+func TestEnterAndLeaveTownMap(t *testing.T) {
+	g, err := NewWorldGame("assets/world.bin")
+	if err != nil || g.loadErr != nil {
+		t.Fatalf("ワールドマップを読み込めない: %v %v", err, g.loadErr)
+	}
+
+	var tokyo *landmark.Placed
+	for i := range g.world.Placed {
+		if g.world.Placed[i].ID == "tokyo" {
+			tokyo = &g.world.Placed[i]
+		}
+	}
+	if tokyo == nil {
+		t.Fatal("東京のランドマークが無い")
+	}
+	if !tokyo.HasMap() {
+		t.Fatal("東京に詳細マップが紐づいていない")
+	}
+
+	outerWorld := g.world
+	outerPos := g.world.Player
+
+	g.enterMap(tokyo)
+	if g.outer == nil {
+		t.Fatal("外のマップが退避されていない")
+	}
+	if g.world == outerWorld {
+		t.Fatal("マップが切り替わっていない")
+	}
+	if g.world.Grid.Level != 10 {
+		t.Errorf("街のメッシュ次数 = %d, want 10", g.world.Grid.Level)
+	}
+	// 街に入った直後に動けること。壁の中に降りていたら遊べない。
+	row, col := g.world.Cell()
+	if !g.world.Grid.At(row, col).Walkable() {
+		t.Errorf("開始位置 (%d,%d) が %s で動けない", row, col, g.world.Grid.At(row, col))
+	}
+
+	// 街の中を歩いてから戻る。
+	g.world.Step(1, 0, 2)
+	townPos := g.world.Player
+
+	g.leaveMap()
+	if g.outer != nil {
+		t.Error("退避したマップが残っている")
+	}
+	if g.world != outerWorld {
+		t.Fatal("元のマップへ戻っていない")
+	}
+	if g.world.Player != outerPos {
+		t.Errorf("戻った位置がずれている: %+v -> %+v", outerPos, g.world.Player)
+	}
+	if g.world.Player == townPos {
+		t.Error("街の中の座標がワールドマップに持ち込まれている")
+	}
+}
+
+// 詳細マップを持たないランドマークでは、従来どおり説明が出ること。
+func TestLandmarkWithoutMapShowsDialog(t *testing.T) {
+	g, err := NewWorldGame("assets/world.bin")
+	if err != nil || g.loadErr != nil {
+		t.Fatalf("ワールドマップを読み込めない: %v %v", err, g.loadErr)
+	}
+	for i := range g.world.Placed {
+		p := &g.world.Placed[i]
+		if p.HasMap() {
+			continue
+		}
+		g.enterMap(p)
+		if g.outer != nil {
+			t.Errorf("%s は詳細マップを持たないのに遷移した", p.Name)
+		}
+		return
+	}
+	t.Skip("詳細マップを持たないランドマークが無い")
+}
+
+// 紐づいたマップのファイルが実在すること。
+func TestLandmarkMapPathsExist(t *testing.T) {
+	marks, err := bundledLandmarks()
+	if err != nil {
+		t.Fatal(err)
+	}
+	checked := 0
+	for _, m := range marks {
+		if !m.HasMap() {
+			continue
+		}
+		if _, err := os.Stat(m.Map); err != nil {
+			t.Errorf("%s のマップが見つからない: %v", m.Name, err)
+		}
+		checked++
+	}
+	if checked == 0 {
+		t.Error("詳細マップに紐づいたランドマークが1件も無い")
+	}
+}

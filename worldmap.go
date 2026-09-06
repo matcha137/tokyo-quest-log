@@ -42,10 +42,22 @@ type WorldGame struct {
 
 	loadErr   error
 	worldPath string
+	mapName   string
+
+	// outer は詳細マップに入る前のマップ。街を出るとここへ戻る。
+	// 同じ *worldsim.World を持ち続けるため、立っていた場所も保たれる。
+	outer *scene
 
 	message      string
 	messageTicks int
 	dialog       *landmark.Placed
+}
+
+// scene は1つのマップとその状態。
+type scene struct {
+	world *worldsim.World
+	path  string
+	name  string
 }
 
 // NewWorldGame はワールドマップ画面を作る。マップデータが無い場合でも
@@ -68,23 +80,13 @@ func NewWorldGame(worldPath string) (*WorldGame, error) {
 }
 
 func (g *WorldGame) loadWorld(path string) error {
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	grid, err := worldgrid.ReadFrom(f)
-	if err != nil {
-		return fmt.Errorf("%s: %w", path, err)
-	}
-	marks, err := bundledLandmarks()
-	if err != nil {
-		return err
-	}
-	placed, _ := landmark.Place(grid, marks)
-	g.world = worldsim.New(grid, placed, 1)
 	// 起点は東京駅。見つからない場合は worldsim の既定位置のままにする。
-	g.world.SpawnAt("tokyo")
+	world, err := g.loadScene(path, "tokyo")
+	if err != nil {
+		return err
+	}
+	g.world = world
+	g.mapName = "ワールドマップ"
 	return nil
 }
 
@@ -120,6 +122,7 @@ func (g *WorldGame) Update() error {
 		return nil
 	}
 
+	g.handleLeave()
 	g.handleBoarding()
 	g.handleEnter()
 	g.handleMovement()
@@ -181,7 +184,12 @@ func (g *WorldGame) handleEnter() {
 	if !inpututil.IsKeyJustPressed(ebiten.KeySpace) && !inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
 		return
 	}
-	if here := g.world.LandmarkHere(); here != nil {
+	here := g.world.LandmarkHere()
+	if here != nil && here.HasMap() {
+		g.enterMap(here)
+		return
+	}
+	if here != nil {
 		g.dialog = here
 		return
 	}
@@ -190,6 +198,60 @@ func (g *WorldGame) handleEnter() {
 		return
 	}
 	g.notify("あたりには何もない")
+}
+
+// handleLeave は詳細マップから外のマップへ戻る。
+func (g *WorldGame) handleLeave() {
+	if g.outer == nil || !inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+		return
+	}
+	g.leaveMap()
+}
+
+// leaveMap は退避しておいた外のマップへ戻す。
+// 同じ *worldsim.World をそのまま復帰させるため、立っていた場所も残る。
+func (g *WorldGame) leaveMap() {
+	if g.outer == nil {
+		return
+	}
+	left := g.mapName
+	g.world, g.worldPath, g.mapName = g.outer.world, g.outer.path, g.outer.name
+	g.outer = nil
+	g.notify(left + " を出た")
+}
+
+// enterMap はランドマークに紐づく詳細マップへ移る。
+// 入る前のマップは outer に退避し、戻ったときに同じ場所に立てるようにする。
+func (g *WorldGame) enterMap(from *landmark.Placed) {
+	world, err := g.loadScene(from.Map, from.ID)
+	if err != nil {
+		g.notify(from.Name + " のマップを開けない: " + err.Error())
+		return
+	}
+	g.outer = &scene{world: g.world, path: g.worldPath, name: g.mapName}
+	g.world, g.worldPath, g.mapName = world, from.Map, from.Name
+	g.notify(from.Name + " に入った（ESC で出る）")
+}
+
+// loadScene は指定パスのマップを読み、spawnID の地点から始める。
+func (g *WorldGame) loadScene(path, spawnID string) (*worldsim.World, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	grid, err := worldgrid.ReadFrom(f)
+	if err != nil {
+		return nil, err
+	}
+	marks, err := bundledLandmarks()
+	if err != nil {
+		return nil, err
+	}
+	placed, _ := landmark.Place(grid, marks)
+	world := worldsim.New(grid, placed, 1)
+	world.SpawnAt(spawnID)
+	return world, nil
 }
 
 func (g *WorldGame) notify(message string) {
@@ -301,20 +363,27 @@ func (g *WorldGame) drawHUD(dst *ebiten.Image) {
 	pos := w.LatLon()
 	row, col := w.Cell()
 
-	g.drawText(dst, "TOKYO QUEST LOG — ワールドマップ", 24, float64(top)+14, 16, ink)
+	g.drawText(dst, "TOKYO QUEST LOG — "+g.mapName, 24, float64(top)+14, 16, ink)
 	g.drawText(dst, fmt.Sprintf("現在地  %s / %s", w.Tile(), w.Vehicle), 24, float64(top)+42, 14, muted)
 	g.drawText(dst, fmt.Sprintf("北緯 %.4f  東経 %.4f  （%d行 %d列）", pos.Lat, pos.Lon, row, col), 24, float64(top)+64, 14, muted)
 	g.drawText(dst, fmt.Sprintf("踏破距離  %.1f km", w.DistanceMeters()/1000), 24, float64(top)+86, 14, muted)
 
 	if here := w.LandmarkHere(); here != nil {
 		g.drawText(dst, here.Name, 470, float64(top)+42, 16, landmarkColor(here.Kind))
-		g.drawText(dst, "SPACE  調べる", 470, float64(top)+66, 13, muted)
+		hint := "SPACE  調べる"
+		if here.HasMap() {
+			hint = "SPACE  この街に入る"
+		}
+		g.drawText(dst, hint, 470, float64(top)+66, 13, muted)
 	} else if near := w.NearestLandmark(6); near != nil {
 		g.drawText(dst, near.Name+" が近い", 470, float64(top)+42, 14, muted)
 	}
 
-	g.drawText(dst, "WASD / 矢印  移動      SHIFT  走る      SPACE  調べる      B  乗船／下船",
-		screenWidth-560, float64(top)+86, 13, muted)
+	controls := "WASD / 矢印  移動      SHIFT  走る      SPACE  調べる      B  乗船／下船"
+	if g.outer != nil {
+		controls = "WASD / 矢印  移動      SHIFT  走る      SPACE  調べる      ESC  " + g.mapName + " を出る"
+	}
+	g.drawText(dst, controls, screenWidth-600, float64(top)+86, 13, muted)
 }
 
 func (g *WorldGame) drawDialog(dst *ebiten.Image) {

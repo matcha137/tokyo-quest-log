@@ -41,7 +41,12 @@ type Landmark struct {
 	Lat  float64 `json:"lat"`
 	Lon  float64 `json:"lon"`
 	Note string  `json:"note,omitempty"`
+	// Map は、この地点から入れる詳細マップのパス。空なら入れない。
+	Map string `json:"map,omitempty"`
 }
+
+// HasMap は入れる詳細マップを持つかを返す。
+func (l Landmark) HasMap() bool { return l.Map != "" }
 
 type file struct {
 	Landmarks []Landmark `json:"landmarks"`

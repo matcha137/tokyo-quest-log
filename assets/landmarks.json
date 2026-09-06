@@ -1,7 +1,7 @@
 {
   "note": "座標は概算（誤差おおむね±500m）。1マス約250mのため2マス程度ずれる場合がある。実データと突き合わせて調整すること。",
   "landmarks": [
-    {"id": "tokyo",        "name": "東京",        "kind": "city",     "lat": 35.681, "lon": 139.767, "note": "起点となる中央駅"},
+    {"id": "tokyo",        "name": "東京",        "kind": "city",     "lat": 35.681, "lon": 139.767, "note": "起点となる中央駅", "map": "assets/town_tokyo.bin"},
     {"id": "shinjuku",     "name": "新宿",        "kind": "city",     "lat": 35.690, "lon": 139.700},
     {"id": "shibuya",      "name": "渋谷",        "kind": "city",     "lat": 35.658, "lon": 139.701},
     {"id": "ikebukuro",    "name": "池袋",        "kind": "city",     "lat": 35.729, "lon": 139.711},
